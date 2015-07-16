@@ -8,9 +8,11 @@ import (
 	"math/rand"
 )
 
-const (
-	eta   float64 = 0.15 // [0.0..1.0] overall net training rate
-	alpha float64 = 0.5  // [0.0..1.0] multiplier of last weight chagne (momentum)
+var (
+	// Eta [0.0..1.0] overall net training rate
+	Eta = 0.15
+	// Alpha [0.0..1.0] multiplier of last weight chagne (momentum)
+	Alpha = 0.5
 )
 
 func randomWeight() float64 {
@@ -19,12 +21,14 @@ func randomWeight() float64 {
 
 func transferFunction(x float64) float64 {
 	// tanh - output range [-1.0..1.0]
+	//return 1.0 / (1.0 + math.Exp(-x))
 	return math.Tanh(x)
 }
 
 func transferFunctionDerivative(x float64) float64 {
 	// tanh derivative
 	// not the actual formula
+	//return 1.0
 	return 1.0 - x*x
 }
 
@@ -41,7 +45,7 @@ type Neuron struct {
 	gradient      float64
 
 	//eta   float64 // [0.0..1.0] overall net training rate
-	//alpha float64 // [0.0..n] multiplier of last weight chagne (momentum)
+	//Alpha float64 // [0.0..n] multiplier of last weight chagne (momentum)
 }
 
 // NewNeuron intializes new neuron object
@@ -100,9 +104,9 @@ func (n *Neuron) updateInputWeights(prevLayer *Layer) {
 
 		newDeltaWeight :=
 			// Individual input, magnified by the gradient and train rate:
-			eta*neuron.outputVal*n.gradient +
+			Eta*neuron.outputVal*n.gradient +
 				// Also add momentun = a fraction of the previous delta wieght
-				alpha*oldDeltaWeight
+				Alpha*oldDeltaWeight
 		neuron.outputWeights[n.myIndex].DeltaWeight = newDeltaWeight
 		neuron.outputWeights[n.myIndex].Weight += newDeltaWeight
 	}
@@ -116,14 +120,14 @@ type NeuralNetwork struct {
 	Layers                            []Layer // layers[layerNum][neuronNum]
 	err                               float64
 	recentAverageError                float64
-	recentAverageErrorSmoothingFactor float64
+	RecentAverageErrorSmoothingFactor float64
 }
 
 // NewNetwork initializes new network
 func NewNetwork(topology []int) *NeuralNetwork {
 	n := new(NeuralNetwork)
 	// Number of training smaples to average over
-	n.recentAverageErrorSmoothingFactor = 1000.0
+	//n.RecentAverageErrorSmoothingFactor = 112.0
 
 	for layerNum := 0; layerNum < len(topology); layerNum++ {
 		n.Layers = append(n.Layers, *new(Layer))
@@ -153,7 +157,7 @@ func NewNetwork(topology []int) *NeuralNetwork {
 // FeedForward takes inputs
 func (n *NeuralNetwork) FeedForward(inputVals []float64) {
 	// Ignore bias
-	if len(inputVals) != len(n.Layers[0])-1 {
+	if len(inputVals) > len(n.Layers[0])-1 {
 		log.Fatalf("Length if inputsVals must be the same as length of"+
 			" the first layer (%d != %d)", len(inputVals), len(n.Layers[0]))
 	}
@@ -188,8 +192,8 @@ func (n *NeuralNetwork) BackProp(targetVals []float64) {
 
 	// Implements a recent average measurement
 	n.recentAverageError =
-		(n.recentAverageError*n.recentAverageErrorSmoothingFactor + n.err) /
-			(n.recentAverageErrorSmoothingFactor + 1.0)
+		(n.recentAverageError*n.RecentAverageErrorSmoothingFactor + n.err) /
+			(n.RecentAverageErrorSmoothingFactor + 1.0)
 
 	// Calculate output layer gradiants
 	for i := 0; i < len(*outputLayer)-1; i++ {
@@ -217,6 +221,11 @@ func (n *NeuralNetwork) BackProp(targetVals []float64) {
 			(*layer)[i].updateInputWeights(prevLayer)
 		}
 	}
+}
+
+// GetAverageError return recentAvarageError value
+func (n *NeuralNetwork) GetAverageError() float64 {
+	return n.recentAverageError
 }
 
 // GetResults returns results from all output neurons as a string

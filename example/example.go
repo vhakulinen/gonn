@@ -28,5 +28,6 @@ func main() {
 		myNet.BackProp([]float64{target})
 		fmt.Printf("Inputs: %v - Output: %v Target: %v\n",
 			input, myNet.GetResults(), target)
+		fmt.Printf("ERR: %f\n", myNet.GetAverageError())
 	}
 }

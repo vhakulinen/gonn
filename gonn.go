@@ -33,17 +33,18 @@ func transferFunctionDerivative(x float64) float64 {
 	//return 1.0 - x*x
 }
 
-type neuronConnection struct {
+// NeuronConnection is made between layers and their neurons
+type NeuronConnection struct {
 	Weight      float64
 	DeltaWeight float64
 }
 
 // Neuron object
 type Neuron struct {
-	outputVal     float64
-	outputWeights []neuronConnection
-	myIndex       int
-	gradient      float64
+	OutputVal     float64
+	OutputWeights []NeuronConnection
+	MyIndex       int
+	Gradient      float64
 
 	//eta   float64 // [0.0..1.0] overall net training rate
 	//Alpha float64 // [0.0..n] multiplier of last weight chagne (momentum)
@@ -54,10 +55,10 @@ func NewNeuron(numOutputs, myIndex int) *Neuron {
 	n := new(Neuron)
 	// c for connections
 	for c := 0; c < numOutputs; c++ {
-		n.outputWeights = append(n.outputWeights, *new(neuronConnection))
-		n.outputWeights[len(n.outputWeights)-1].Weight = randomWeight()
+		n.OutputWeights = append(n.OutputWeights, *new(NeuronConnection))
+		n.OutputWeights[len(n.OutputWeights)-1].Weight = randomWeight()
 	}
-	n.myIndex = myIndex
+	n.MyIndex = myIndex
 	return n
 }
 
@@ -69,31 +70,31 @@ func (n *Neuron) FeedForward(prevLayer *Layer) {
 	// Include the bias node from the previous layer
 
 	for i := 0; i < len(*prevLayer); i++ {
-		sum += (*prevLayer)[i].outputVal *
-			(*prevLayer)[i].outputWeights[n.myIndex].Weight
+		sum += (*prevLayer)[i].OutputVal *
+			(*prevLayer)[i].OutputWeights[n.MyIndex].Weight
 	}
 
-	n.outputVal = transferFunction(sum)
+	n.OutputVal = transferFunction(sum)
 }
 
 func (n Neuron) sumDOW(nextLayer *Layer) float64 {
 	var sum float64
 
 	for i := 0; i < len(*nextLayer)-1; i++ {
-		sum += n.outputWeights[i].Weight * (*nextLayer)[i].gradient
+		sum += n.OutputWeights[i].Weight * (*nextLayer)[i].Gradient
 	}
 
 	return sum
 }
 
 func (n *Neuron) calculateOutputGradients(targetVal float64) {
-	delta := targetVal - n.outputVal
-	n.gradient = delta * transferFunctionDerivative(n.outputVal)
+	delta := targetVal - n.OutputVal
+	n.Gradient = delta * transferFunctionDerivative(n.OutputVal)
 }
 
 func (n *Neuron) calculateHiddenGradients(nextLayer *Layer) {
 	dow := n.sumDOW(nextLayer)
-	n.gradient = dow * transferFunctionDerivative(n.outputVal)
+	n.Gradient = dow * transferFunctionDerivative(n.OutputVal)
 }
 
 func (n *Neuron) updateInputWeights(prevLayer *Layer) {
@@ -101,15 +102,15 @@ func (n *Neuron) updateInputWeights(prevLayer *Layer) {
 	// int the neurons in the preceding layer
 	for i := 0; i < len(*prevLayer); i++ {
 		neuron := &(*prevLayer)[i]
-		oldDeltaWeight := neuron.outputWeights[n.myIndex].DeltaWeight
+		oldDeltaWeight := neuron.OutputWeights[n.MyIndex].DeltaWeight
 
 		newDeltaWeight :=
 			// Individual input, magnified by the gradient and train rate:
-			Eta*neuron.outputVal*n.gradient +
+			Eta*neuron.OutputVal*n.Gradient +
 				// Also add momentun = a fraction of the previous delta wieght
 				Alpha*oldDeltaWeight
-		neuron.outputWeights[n.myIndex].DeltaWeight = newDeltaWeight
-		neuron.outputWeights[n.myIndex].Weight += newDeltaWeight
+		neuron.OutputWeights[n.MyIndex].DeltaWeight = newDeltaWeight
+		neuron.OutputWeights[n.MyIndex].Weight += newDeltaWeight
 	}
 }
 
@@ -119,8 +120,8 @@ type Layer []Neuron
 // NeuralNetwork holds all the data of the network
 type NeuralNetwork struct {
 	Layers                            []Layer // layers[layerNum][neuronNum]
-	err                               float64
-	recentAverageError                float64
+	Err                               float64
+	RecentAverageError                float64
 	RecentAverageErrorSmoothingFactor float64
 }
 
@@ -150,7 +151,7 @@ func NewNetwork(topology []int) *NeuralNetwork {
 		// Force the bias node's output value to 1.0. It's the last neuron
 		// created above
 		layer := &n.Layers[layerNum]
-		(*layer)[len(*layer)-1].outputVal = 1.0
+		(*layer)[len(*layer)-1].OutputVal = 1.0
 	}
 	return n
 }
@@ -165,7 +166,7 @@ func (n *NeuralNetwork) FeedForward(inputVals []float64) {
 
 	// assign the input values into the input neurons
 	for i := 0; i < len(inputVals); i++ {
-		n.Layers[0][i].outputVal = inputVals[i]
+		n.Layers[0][i].OutputVal = inputVals[i]
 	}
 
 	// Forward propagate
@@ -182,22 +183,22 @@ func (n *NeuralNetwork) BackProp(targetVals []float64) {
 	// Calculate overall net error (RMS of output errors)
 	// RMS = "Root Mean Square Error"
 	outputLayer := &n.Layers[len(n.Layers)-1]
-	n.err = 0.0
+	n.Err = 0.0
 
 	for i := 0; i < len(*outputLayer)-1; i++ {
-		delta := targetVals[i] - (*outputLayer)[i].outputVal
-		n.err += delta * delta
+		delta := targetVals[i] - (*outputLayer)[i].OutputVal
+		n.Err += delta * delta
 	}
-	n.err /= float64(len(*outputLayer)) - 1.0 // get average error squared
-	n.err = math.Sqrt(n.err)                  // RMS
+	n.Err /= float64(len(*outputLayer)) - 1.0 // get average error squared
+	n.Err = math.Sqrt(n.Err)                  // RMS
 
 	//if n.err > 2.0 {
 	//n.err = 1.0
 	//}
 
 	// Implements a recent average measurement
-	n.recentAverageError =
-		(n.recentAverageError*n.RecentAverageErrorSmoothingFactor + n.err) /
+	n.RecentAverageError =
+		(n.RecentAverageError*n.RecentAverageErrorSmoothingFactor + n.Err) /
 			(n.RecentAverageErrorSmoothingFactor + 1.0)
 
 	// Calculate output layer gradiants
@@ -230,7 +231,7 @@ func (n *NeuralNetwork) BackProp(targetVals []float64) {
 
 // GetAverageError return recentAvarageError value
 func (n *NeuralNetwork) GetAverageError() float64 {
-	return n.recentAverageError
+	return n.RecentAverageError
 }
 
 // GetResults returns results from all output neurons as a string
@@ -241,7 +242,7 @@ func (n *NeuralNetwork) GetResults() string {
 			// Ignore bias
 			continue
 		}
-		out += fmt.Sprintf("%f ", outputNeuron.outputVal)
+		out += fmt.Sprintf("%f ", outputNeuron.OutputVal)
 	}
 	return out
 }

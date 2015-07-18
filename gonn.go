@@ -29,8 +29,8 @@ func transferFunctionDerivative(x float64) float64 {
 	// tanh derivative
 	// not the actual formula
 	//return 1.0
-	return (1.0 / (1.0 + math.Exp(-x))) - (1.0+math.Exp(-x))*(1.0+math.Exp(-x))
-	//return 1.0 - x*x
+	//return (1.0 / (1.0 + math.Exp(-x))) - (1.0+math.Exp(-x))*(1.0+math.Exp(-x))
+	return 1.0 - x*x
 }
 
 // NeuronConnection is made between layers and their neurons
@@ -192,8 +192,8 @@ func (n *NeuralNetwork) BackProp(targetVals []float64) {
 	n.Err /= float64(len(*outputLayer)) - 1.0 // get average error squared
 	n.Err = math.Sqrt(n.Err)                  // RMS
 
-	//if n.err > 2.0 {
-	//n.err = 1.0
+	//if n.Err > 2.0 {
+	//n.Err = 1.0
 	//}
 
 	// Implements a recent average measurement
